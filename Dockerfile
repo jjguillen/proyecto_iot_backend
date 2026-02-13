@@ -9,7 +9,7 @@ ENTRYPOINT ["java","-jar","/app.jar"]
 # ./gradlew clean build -x test
 
 # podman build -t springiot:1.0 .
-# podman run -d --name mariadb_iot -p 3309:3306 -e MARIADB_ROOT_PASSWORD=toor -e MARIADB_DATABASE=iot -e MARIADB_USER=usuario -e MARIADB_PASSWORD=usuario1234 -v mariadb_data:/var/lib/mysql mariadb:latest
+# podman run -d --name mariadb_iot -p 3309:3306 -e MARIADB_ROOT_PASSWORD=toor -e MARIADB_DATABASE=iot -e MARIADB_USER=usuario -e MARIADB_PASSWORD=usuario1234 -v mariadb_iot_data:/var/lib/mysql mariadb:latest
 # podman run -p 8080:8080 --network host  --name springiot -d -t springiot:1.0
 
 # Pasos que habría que hacer para desplegar ----------------
