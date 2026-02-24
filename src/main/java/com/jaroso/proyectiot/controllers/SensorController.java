@@ -3,6 +3,7 @@ package com.jaroso.proyectiot.controllers;
 import com.jaroso.proyectiot.dtos.SensorCreateDto;
 import com.jaroso.proyectiot.dtos.SensorDto;
 import com.jaroso.proyectiot.dtos.SensorUpdateDto;
+import com.jaroso.proyectiot.entities.EstadoSensor;
 import com.jaroso.proyectiot.entities.Sensor;
 import com.jaroso.proyectiot.mappers.SensorMapper;
 import com.jaroso.proyectiot.repositories.SensorRepository;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 @RestController
 public class SensorController {
@@ -22,6 +24,8 @@ public class SensorController {
 
     @Autowired
     private SensorMapper mapper;
+
+    Logger logger = Logger.getLogger(LecturaController.class.getName());
 
     @GetMapping("/sensors")
     public ResponseEntity<List<SensorDto>> getAll(){
@@ -43,6 +47,7 @@ public class SensorController {
 
     @PutMapping("/sensors/{id}")
     public ResponseEntity<SensorDto> updateSensor(@PathVariable Long id, @RequestBody SensorUpdateDto sensorUpdateDto){
+        logger.info("Actualizando sensor: " + sensorUpdateDto);
         Optional<Sensor> sensor = sensorRepository.findById(id);
         if (sensor.isPresent()){
             sensor.get().setEstado(sensorUpdateDto.estado());
