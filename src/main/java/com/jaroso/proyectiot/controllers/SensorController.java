@@ -7,6 +7,7 @@ import com.jaroso.proyectiot.entities.EstadoSensor;
 import com.jaroso.proyectiot.entities.Sensor;
 import com.jaroso.proyectiot.mappers.SensorMapper;
 import com.jaroso.proyectiot.repositories.SensorRepository;
+import com.jaroso.proyectiot.services.MqttPublisher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +25,9 @@ public class SensorController {
 
     @Autowired
     private SensorMapper mapper;
+
+    @Autowired
+    private MqttPublisher mqttPublisher;
 
     Logger logger = Logger.getLogger(LecturaController.class.getName());
 
@@ -51,6 +55,11 @@ public class SensorController {
         Optional<Sensor> sensor = sensorRepository.findById(id);
         if (sensor.isPresent()){
             sensor.get().setEstado(sensorUpdateDto.estado());
+
+            // publica un mensaje MQTT al topic del actuador (ej: actuadores/1/comando con payload ON o OFF)
+            String payload = String.format("{\"estado\": \"%s\"}", sensorUpdateDto.estado());
+            mqttPublisher.publish("test/sensor/bomba", payload);
+
             return ResponseEntity.ok(mapper.toDto(sensorRepository.save(sensor.get())));
         } else {
             return ResponseEntity.notFound().build();
