@@ -55,6 +55,20 @@ public class LecturaController {
     }
 
     /**
+     * Devuelve la última lectura de un sensor
+     * @param idSensor id del sensor del que se quiere la última lectura
+     */
+    @GetMapping("/lecturas/{idSensor}/ultima")
+    public ResponseEntity<LecturaDto> getUltimaLectura(@PathVariable Long idSensor) {
+        Optional<Lectura> ultimaLectura = lecturaRepository.findTopBySensorIdOrderByFechaHoraDesc(idSensor);
+        if (ultimaLectura.isPresent()) {
+            return ResponseEntity.ok(lecturaMapper.toDto(ultimaLectura.get()));
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
      * Guarda una lectura en la BBDD
      * @param lecturaCreateDto  (Json) con los datos de la lectura a guardar,
      *                          incluido el id del sensor al que pertenece

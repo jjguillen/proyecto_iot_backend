@@ -4,8 +4,10 @@ import com.jaroso.proyectiot.dtos.SensorCreateDto;
 import com.jaroso.proyectiot.dtos.SensorDto;
 import com.jaroso.proyectiot.dtos.SensorUpdateDto;
 import com.jaroso.proyectiot.entities.EstadoSensor;
+import com.jaroso.proyectiot.entities.Sector;
 import com.jaroso.proyectiot.entities.Sensor;
 import com.jaroso.proyectiot.mappers.SensorMapper;
+import com.jaroso.proyectiot.repositories.SectorRepository;
 import com.jaroso.proyectiot.repositories.SensorRepository;
 import com.jaroso.proyectiot.services.MqttPublisher;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +24,9 @@ public class SensorController {
 
     @Autowired
     private SensorRepository sensorRepository;
+
+    @Autowired
+    private SectorRepository sectorRepository;
 
     @Autowired
     private SensorMapper mapper;
@@ -45,6 +50,10 @@ public class SensorController {
     @PostMapping("/sensors")
     public ResponseEntity<SensorDto> createSensor(@RequestBody SensorCreateDto sensor){
         Sensor sensorEntity = mapper.toEntity(sensor);
+
+        Sector sector = sectorRepository.findById(sensor.sectorId()).orElseThrow(() -> new IllegalArgumentException("Sector no encontrado"));
+        sensorEntity.setSector(sector);
+
         return ResponseEntity.status(HttpStatus.CREATED)
                              .body(mapper.toDto(sensorRepository.save(sensorEntity)));
     }
@@ -58,7 +67,7 @@ public class SensorController {
 
             // publica un mensaje MQTT al topic del actuador (ej: actuadores/1/comando con payload ON o OFF)
             String payload = String.format("{\"estado\": \"%s\"}", sensorUpdateDto.estado());
-            mqttPublisher.publish("test/sensor/bomba", payload);
+            mqttPublisher.publish(sensor.get().getTopicMQTT(), payload);
 
             return ResponseEntity.ok(mapper.toDto(sensorRepository.save(sensor.get())));
         } else {

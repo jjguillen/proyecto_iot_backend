@@ -8,8 +8,10 @@ import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring")
 public interface SensorMapper {
+    @Mapping(target = "sectorId", source = "sector.id")
     SensorDto toDto(Sensor sensor);
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "sector", ignore = true)
     Sensor toEntity(SensorCreateDto sensorDto);
 }

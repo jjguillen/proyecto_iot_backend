@@ -3,5 +3,6 @@ package com.jaroso.proyectiot.dtos;
 import com.jaroso.proyectiot.entities.EstadoSensor;
 import com.jaroso.proyectiot.entities.TipoSensor;
 
-public record SensorDto(Long id, String nombre, TipoSensor tipo, EstadoSensor estado, String ubicacion) {
+public record SensorDto(Long id, String nombre, TipoSensor tipo, EstadoSensor estado, String ubicacion,
+                        String topicMQTT, Boolean isActuador, Long sectorId) {
 }

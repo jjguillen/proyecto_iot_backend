@@ -6,8 +6,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "sensores")
@@ -27,6 +25,10 @@ public class Sensor {
 
     private String ubicacion;
 
+    private String topicMQTT;
+
+    private Boolean isActuador;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private TipoSensor tipo;
@@ -34,6 +36,11 @@ public class Sensor {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private EstadoSensor estado;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sector_id", nullable = false)
+    private Sector sector;
+
 
 
 }
