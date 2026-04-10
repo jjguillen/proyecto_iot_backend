@@ -43,6 +43,7 @@ public class SensorController {
 
     @GetMapping("/sensors/{id}")
     public ResponseEntity<SensorDto> getById(@PathVariable Long id){
+        logger.info("Leyendo sensor: " + id);
         Optional<SensorDto> sensor = sensorRepository.findById(id).map(mapper::toDto);
         return sensor.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
@@ -67,7 +68,7 @@ public class SensorController {
 
             // publica un mensaje MQTT al topic del actuador (ej: actuadores/1/comando con payload ON o OFF)
             String payload = String.format("{\"estado\": \"%s\"}", sensorUpdateDto.estado());
-            mqttPublisher.publish(sensor.get().getTopicMQTT(), payload);
+            mqttPublisher.publish(sensor.get().getTopicMQTTAct(), payload);
 
             return ResponseEntity.ok(mapper.toDto(sensorRepository.save(sensor.get())));
         } else {

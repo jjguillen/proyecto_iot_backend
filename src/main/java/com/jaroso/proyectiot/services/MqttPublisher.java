@@ -63,24 +63,7 @@ public class MqttPublisher {
                 .thenAccept(connAck -> {
                     logger.info("Conexión exitosa al broker MQTT");
 
-                    logger.info("Suscribiéndose a iot/sensor/1/");
-                    client.subscribeWith()
-                            .topicFilter("iot/sensor/1/")
-                            .callback(msg -> procesarTemperatura(msg, 1))
-                            .send();
-
-                    logger.info("Suscribiéndose a iot/sensor/2/");
-                    client.subscribeWith()
-                            .topicFilter("iot/sensor/2/")
-                            .callback(msg -> procesarTemperatura(msg, 2))
-                            .send();
-
-                    logger.info("Suscribiéndose a iot/sensor/3/");
-                    client.subscribeWith()
-                            .topicFilter("iot/sensor/3/")
-                            .callback(msg -> procesarHumedad(msg, 3))
-                            .send();
-
+                    //SUSCRIBIRNOS A TODOS LOS SENSORES QUE TENEMOS
                     logger.info("Suscribiéndose a 4/10/0");
                     client.subscribeWith()
                             .topicFilter("4/10/0")
@@ -95,27 +78,6 @@ public class MqttPublisher {
                 });
     }
 
-    private void procesarTemperatura(Mqtt3Publish msg, long sensorId) {
-        logger.info("Recibiendo mensaje temperatura de: " + msg.getTopic());
-        String payload = new String(msg.getPayloadAsBytes());
-        //Convertir dato a lo que necesitamos
-        JsonNode json = objectMapper.readTree(payload);
-        double valor = json.get("valor").asDouble();
-
-        //Guardar la lectura en BBDD
-        saveLectura(valor, sensorId);
-    }
-
-    private void procesarHumedad(Mqtt3Publish msg, long sensorId) {
-        logger.info("Recibiendo mensaje humedad de: " + msg.getTopic());
-        String payload = new String(msg.getPayloadAsBytes());
-        //Convertir dato a lo que necesitamos
-        JsonNode json = objectMapper.readTree(payload);
-        double valor = json.get("valor").asDouble();
-
-        //Guardar la lectura en BBDD
-        saveLectura(valor, sensorId);
-    }
 
     private void procesarHumedadBruto(Mqtt3Publish msg, long sensorId) {
         logger.info("Recibiendo mensaje humedad de: " + msg.getTopic());
@@ -138,7 +100,6 @@ public class MqttPublisher {
         Optional<Sensor> sensor = sensorRepository.findById(sensorId);
         if (sensor.isEmpty()) {
             logger.info("Sensor incorrecto, no se puede grabar lectura: " + sensorId);
-            return;
         } else {
             lectura.setSensor(sensor.get());
             lecturaRepository.save(lectura);

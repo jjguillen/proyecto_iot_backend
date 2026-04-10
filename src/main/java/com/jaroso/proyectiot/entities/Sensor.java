@@ -25,9 +25,15 @@ public class Sensor {
 
     private String ubicacion;
 
-    private String topicMQTT;
+    private String topicMQTT; //Topic para la lectura del sensor
 
-    private Boolean isActuador;
+    private String topicMQTTAct; //Topic para cambiar el estado del actuador
+
+    private Integer valorMin; //Umbral mínimo
+
+    private Integer valorMax; //Umbral máximo
+
+    private Boolean isActuador; //Indica si es un actuador o no
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
