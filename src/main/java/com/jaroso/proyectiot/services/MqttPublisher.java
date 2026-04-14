@@ -5,6 +5,7 @@ import com.hivemq.client.mqtt.mqtt3.Mqtt3Client;
 import com.hivemq.client.mqtt.mqtt3.message.publish.Mqtt3Publish;
 import com.jaroso.proyectiot.entities.Lectura;
 import com.jaroso.proyectiot.entities.Sensor;
+import com.jaroso.proyectiot.entities.TipoSensor;
 import com.jaroso.proyectiot.repositories.LecturaRepository;
 import com.jaroso.proyectiot.repositories.SensorRepository;
 import jakarta.annotation.PostConstruct;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.logging.Logger;
@@ -64,11 +66,56 @@ public class MqttPublisher {
                     logger.info("Conexión exitosa al broker MQTT");
 
                     //SUSCRIBIRNOS A TODOS LOS SENSORES QUE TENEMOS
-                    logger.info("Suscribiéndose a 4/10/0");
-                    client.subscribeWith()
-                            .topicFilter("4/10/0")
-                            .callback(msg -> procesarHumedadBruto(msg, 2))
-                            .send();
+
+                    //Humedad
+                    sensorRepository.findAll().stream()
+                                    .filter(sensor -> sensor.getTipo().equals(TipoSensor.HUMEDAD))
+                            .forEach(sensor -> {
+                                logger.info("Suscribiéndose a " + sensor.getTopicMQTT());
+                                client.subscribeWith()
+                                        .topicFilter(sensor.getTopicMQTT())
+                                        .callback(msg -> procesarHumedad(msg, sensor.getId()))
+                                        .send();
+                            });
+
+                    //Caudal
+                    sensorRepository.findAll().stream()
+                            .filter(sensor -> sensor.getTipo().equals(TipoSensor.CAUDAL))
+                            .forEach(sensor -> {
+                                logger.info("Suscribiéndose a " + sensor.getTopicMQTT());
+                                client.subscribeWith()
+                                        .topicFilter(sensor.getTopicMQTT())
+                                        .callback(msg -> procesarCaudal(msg, sensor.getId()))
+                                        .send();
+                            });
+
+                    //Nivel o Presion
+                    sensorRepository.findAll().stream()
+                            .filter(sensor -> sensor.getTipo().equals(TipoSensor.NIVEL)
+                                || sensor.getTipo().equals(TipoSensor.PRESION))
+                            .forEach(sensor -> {
+                                logger.info("Suscribiéndose a " + sensor.getTopicMQTT());
+                                client.subscribeWith()
+                                        .topicFilter(sensor.getTopicMQTT())
+                                        .callback(msg -> procesarNivelPresion(msg, sensor.getId()))
+                                        .send();
+                            });
+
+
+                    //Actuadores: BOMBA Y ELECTROVALVULA
+                    sensorRepository.findAll().stream()
+                            .filter(sensor -> sensor.getTipo().equals(TipoSensor.ELECTROVALVULA)
+                                    ||  sensor.getTipo().equals(TipoSensor.BOMBA))
+                            .forEach(sensor -> {
+                                logger.info("Suscribiéndose a " + sensor.getTopicMQTT());
+                                client.subscribeWith()
+                                        .topicFilter(sensor.getTopicMQTT())
+                                        .callback(msg -> procesarActuador(msg, sensor.getId()))
+                                        .send();
+                            });
+
+
+
 
                 })
                 .exceptionally(throwable -> {
@@ -78,12 +125,42 @@ public class MqttPublisher {
                 });
     }
 
+    private void procesarCaudal(Mqtt3Publish msg, long sensorId) {
+        logger.info("Recibiendo mensaje presion/nivel de: " + msg.getTopic());
+        String payload = new String(msg.getPayloadAsBytes(), StandardCharsets.UTF_8).trim();
+        double pulsos10s = Double.parseDouble(payload);
 
-    private void procesarHumedadBruto(Mqtt3Publish msg, long sensorId) {
+        //double litrosEn10s = pulsos10s / 450.0;
+        double caudalLMin = pulsos10s / 75.0;
+
+        saveLectura(caudalLMin, sensorId);
+    }
+
+    private void procesarNivelPresion(Mqtt3Publish msg, long sensorId) {
+        logger.info("Recibiendo mensaje presion/nivel de: " + msg.getTopic());
+        String payload = new String(msg.getPayloadAsBytes());
+        double valor = Double.parseDouble(payload);
+        saveLectura(valor, sensorId);
+    }
+
+    private void procesarHumedad(Mqtt3Publish msg, long sensorId) {
         logger.info("Recibiendo mensaje humedad de: " + msg.getTopic());
         String payload = new String(msg.getPayloadAsBytes());
         payload = payload.substring(0, payload.length() - 1);
         double valor = Double.parseDouble(payload);
+        saveLectura(valor, sensorId);
+    }
+
+    private void procesarActuador(Mqtt3Publish msg, long sensorId) {
+        logger.info("Recibiendo mensaje actuador de: " + msg.getTopic());
+        String payload = new String(msg.getPayloadAsBytes(), StandardCharsets.UTF_8).trim();
+        String normalizado = payload.toLowerCase();
+
+        double valor = switch (normalizado) {
+            case "on", "true", "1" -> 1.0;
+            case "off", "false", "0" -> 0.0;
+            default -> throw new IllegalArgumentException("Payload de actuador no soportado: " + payload);
+        };
 
         //Guardar la lectura en BBDD
         saveLectura(valor, sensorId);
