@@ -80,6 +80,16 @@ public class ActuatorAutomationService {
             plannedActions.put(MAIN_PUMP_ID, EstadoSensor.PARADO);
         }
 
+        // Regla adicional 2: si cierro la bomba principal y hay alguna EV abierta,
+        // cierro todas las que estén abiertas, manda la bomba principal
+        if (actuatorId.equals(MAIN_PUMP_ID) && targetState == EstadoSensor.PARADO) {
+            for(Long valveId : MAIN_VALVE_IDS) {
+                if (resolveEffectiveState(valveId, plannedActions) == EstadoSensor.ARRANCADO) {
+                    plannedActions.put(valveId, EstadoSensor.PARADO);
+                }
+            }
+        }
+
         // Reglas dentro de los Sectores
         Optional<SectorActuatorGroup> sectorGroupOpt = findSectorGroupForActuator(actuatorId);
         if (sectorGroupOpt.isPresent()) {
