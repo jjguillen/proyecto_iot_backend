@@ -30,13 +30,16 @@ public class MqttPublisher {
     private SensorRepository sensorRepository;
 
     @Autowired
+    private AutomaticTankLevelService automaticTankLevelService;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
     private final Mqtt3AsyncClient client;
     private final String host;
     private final int port;
 
-    Logger logger = Logger.getLogger(MqttPublisher.class.getName());
+    private final Logger logger = Logger.getLogger(MqttPublisher.class.getName());
 
     public MqttPublisher(@Value("${mqtt.host:localhost}") String host,
                          @Value("${mqtt.port:1883}") int port) {
@@ -89,15 +92,25 @@ public class MqttPublisher {
                                         .send();
                             });
 
-                    //Nivel o Presion
+                    //Presión
                     sensorRepository.findAll().stream()
-                            .filter(sensor -> sensor.getTipo().equals(TipoSensor.NIVEL)
-                                || sensor.getTipo().equals(TipoSensor.PRESION))
+                            .filter(sensor -> sensor.getTipo().equals(TipoSensor.PRESION))
                             .forEach(sensor -> {
                                 logger.info("Suscribiéndose a " + sensor.getTopicMQTT());
                                 client.subscribeWith()
                                         .topicFilter(sensor.getTopicMQTT())
-                                        .callback(msg -> procesarNivelPresion(msg, sensor.getId()))
+                                        .callback(msg -> procesarPresion(msg, sensor.getId()))
+                                        .send();
+                            });
+
+                    //Nivel
+                    sensorRepository.findAll().stream()
+                            .filter(sensor -> sensor.getTipo().equals(TipoSensor.NIVEL))
+                            .forEach(sensor -> {
+                                logger.info("Suscribiéndose a " + sensor.getTopicMQTT());
+                                client.subscribeWith()
+                                        .topicFilter(sensor.getTopicMQTT())
+                                        .callback(msg -> procesarNivel(msg, sensor.getId()))
                                         .send();
                             });
 
@@ -136,8 +149,17 @@ public class MqttPublisher {
         saveLectura(caudalLMin, sensorId);
     }
 
-    private void procesarNivelPresion(Mqtt3Publish msg, long sensorId) {
-        logger.info("Recibiendo mensaje presion/nivel de: " + msg.getTopic());
+    //Procesar nivel y llamar a llenado o vaciado automático si corresponde
+    private void procesarNivel(Mqtt3Publish msg, long sensorId) {
+        logger.info("Recibiendo mensaje nivel de: " + msg.getTopic());
+        String payload = new String(msg.getPayloadAsBytes());
+        double valor = Double.parseDouble(payload);
+        saveLectura(valor, sensorId);
+        automaticTankLevelService.evaluateLevel(sensorId, valor);
+    }
+
+    private void procesarPresion(Mqtt3Publish msg, long sensorId) {
+        logger.info("Recibiendo mensaje presion de: " + msg.getTopic());
         String payload = new String(msg.getPayloadAsBytes());
         double valor = Double.parseDouble(payload);
         saveLectura(valor, sensorId);
@@ -178,6 +200,7 @@ public class MqttPublisher {
         if (sensor.isEmpty()) {
             logger.info("Sensor incorrecto, no se puede grabar lectura: " + sensorId);
         } else {
+            //logger.info("Grabando lectura de: " + sensorId);
             lectura.setSensor(sensor.get());
             lecturaRepository.save(lectura);
         }
