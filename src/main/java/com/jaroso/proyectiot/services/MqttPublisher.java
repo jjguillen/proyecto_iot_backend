@@ -154,6 +154,7 @@ public class MqttPublisher {
         logger.info("Recibiendo mensaje nivel de: " + msg.getTopic());
         String payload = new String(msg.getPayloadAsBytes());
         double valor = Double.parseDouble(payload);
+
         saveLectura(valor, sensorId);
         automaticTankLevelService.evaluateLevel(sensorId, valor);
     }
@@ -162,6 +163,7 @@ public class MqttPublisher {
         logger.info("Recibiendo mensaje presion de: " + msg.getTopic());
         String payload = new String(msg.getPayloadAsBytes());
         double valor = Double.parseDouble(payload);
+
         saveLectura(valor, sensorId);
     }
 
@@ -170,6 +172,7 @@ public class MqttPublisher {
         String payload = new String(msg.getPayloadAsBytes());
         payload = payload.substring(0, payload.length() - 1);
         double valor = Double.parseDouble(payload);
+        
         saveLectura(valor, sensorId);
     }
 
