@@ -107,8 +107,11 @@ public class ActuatorAutomationService {
                 plannedActions.put(group.pumpId(), EstadoSensor.ARRANCADO);
             }
 
-            // Regla 5: cerrar EV de sector -> cerrar bomba del sector.
-            if (group.valveIds().contains(actuatorId) && targetState == EstadoSensor.PARADO) {
+            // Regla 5: cerrar EV de sector -> cerrar bomba del sector solo si tras ese cierre
+            // no queda ninguna otra EV del sector abierta.
+            if (group.valveIds().contains(actuatorId)
+                    && targetState == EstadoSensor.PARADO
+                    && allSectorValvesClosed(group, plannedActions)) {
                 plannedActions.put(group.pumpId(), EstadoSensor.PARADO);
             }
 

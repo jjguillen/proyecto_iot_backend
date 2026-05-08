@@ -138,42 +138,101 @@ public class MqttPublisher {
                 });
     }
 
+    /**
+     * Convierte el valor recibido mqtt a un caudal de litros por minuto
+     * @param msg
+     * @param sensorId
+     */
     private void procesarCaudal(Mqtt3Publish msg, long sensorId) {
         logger.info("Recibiendo mensaje presion/nivel de: " + msg.getTopic());
         String payload = new String(msg.getPayloadAsBytes(), StandardCharsets.UTF_8).trim();
-        double pulsos10s = Double.parseDouble(payload);
+        int valor = Integer.parseInt(payload);
 
-        //double litrosEn10s = pulsos10s / 450.0;
-        double caudalLMin = pulsos10s / 75.0;
+        //Corrección sobre el valor enviado, ya que al enviar se le suma 100
+        int caudalRawInt = valor - 100;
 
-        saveLectura(caudalLMin, sensorId);
+        double caudalLMin = (caudalRawInt / 75.0); //ecuación de conversión
+
+        if ((caudalLMin > 10) || (caudalLMin < 0)) {
+            logger.info("No se guarda el valor de caudal -> fuera de rango: " + caudalLMin);
+        } else {
+            saveLectura(caudalLMin, sensorId);
+        }
     }
 
-    //Procesar nivel y llamar a llenado o vaciado automático si corresponde
+    /**
+     * Convierte el dato mqtt primero a litros de agua que hay y luego guarda un porcentaje
+     * y llama a la automatización de activar o para EVs para llenar o vaciar la balsa si corresponde
+     * @param msg
+     * @param sensorId
+     */
     private void procesarNivel(Mqtt3Publish msg, long sensorId) {
         logger.info("Recibiendo mensaje nivel de: " + msg.getTopic());
-        String payload = new String(msg.getPayloadAsBytes());
+        String payload = new String(msg.getPayloadAsBytes(), StandardCharsets.UTF_8).trim();
         double valor = Double.parseDouble(payload);
 
-        saveLectura(valor, sensorId);
-        automaticTankLevelService.evaluateLevel(sensorId, valor);
+        var areaDm2 = 1.45 * 1.45; //(el área de la balsa)
+        var capacidadLitros = 8.0;
+        var volumenL = areaDm2 * (valor / 10);
+
+        var litros = capacidadLitros - volumenL; //lo que mide es la parte vacía, por lo que hay que restar al máximo (8dm) el volumen convertido a dm
+        double porcentaje = (litros / capacidadLitros) * 100.0;
+        porcentaje = Math.clamp(porcentaje, 0.0, 100.0);
+
+        //MÁS FÁCIL SI SABEMOS ALTURA DE LA BALSA, LO QUE GUARDAMOS ES UN PORCENTAJE
+        //porcentaje = ((alturaTotalCm - alturaVaciaCmSensor) / alturaTotalCm) * 100
+
+        saveLectura(porcentaje, sensorId);
+        automaticTankLevelService.evaluateLevel(sensorId, porcentaje);
     }
 
+    /**
+     * Convierte el dato de mqtt en bruto a un valor de presión en Kgf/cm2
+     * @param msg
+     * @param sensorId
+     */
     private void procesarPresion(Mqtt3Publish msg, long sensorId) {
         logger.info("Recibiendo mensaje presion de: " + msg.getTopic());
-        String payload = new String(msg.getPayloadAsBytes());
-        double valor = Double.parseDouble(payload);
+        String payload = new String(msg.getPayloadAsBytes(), StandardCharsets.UTF_8).trim();
 
-        saveLectura(valor, sensorId);
+        double valorRaw = Double.parseDouble(payload) - 450;
+
+        if (valorRaw < 0.0)
+            valorRaw = 0.0;
+
+        double convCadMv = 1;       //de cad a mV
+        double convMvBar = 0.003;   //de mV a kgf/cm2
+
+        double presionKgfCm2 = valorRaw * convCadMv * convMvBar;
+
+        if ( presionKgfCm2 > 0.4) {
+            logger.info("No se guarda el valor de presión -> fuera de rango: " + presionKgfCm2);
+        } else {
+            saveLectura(presionKgfCm2, sensorId);
+        }
     }
 
+    /**
+     * Convierte el dato de mqtt a un dato de humedad relativa (0-100)
+     * @param msg
+     * @param sensorId
+     */
     private void procesarHumedad(Mqtt3Publish msg, long sensorId) {
         logger.info("Recibiendo mensaje humedad de: " + msg.getTopic());
-        String payload = new String(msg.getPayloadAsBytes());
-        payload = payload.substring(0, payload.length() - 1);
-        double valor = Double.parseDouble(payload);
-        
-        saveLectura(valor, sensorId);
+        String payload = new String(msg.getPayloadAsBytes(), StandardCharsets.UTF_8).trim();
+        var valor = Integer.parseInt(payload);
+
+        var cadMin = 330;   //valor en seco
+        var cadMax = 715;   //valor totalmente húmedo
+
+        //Queremos dar un valor en el rango 0-100
+        var humedadRH = 100 - ((100.0 / (cadMax - cadMin)) * (valor - cadMin));
+
+        if ((humedadRH > 100) || (humedadRH < 0)) {
+            logger.info("No se guarda el valor de humedad -> fuera de rango: " + humedadRH);
+        } else {
+            saveLectura(humedadRH, sensorId);
+        }
     }
 
     private void procesarActuador(Mqtt3Publish msg, long sensorId) {
