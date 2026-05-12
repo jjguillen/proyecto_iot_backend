@@ -144,14 +144,20 @@ public class MqttPublisher {
      * @param sensorId
      */
     private void procesarCaudal(Mqtt3Publish msg, long sensorId) {
-        logger.info("Recibiendo mensaje presion/nivel de: " + msg.getTopic());
-        String payload = new String(msg.getPayloadAsBytes(), StandardCharsets.UTF_8).trim();
+        String payload = new String(msg.getPayloadAsBytes()).trim();
         int valor = Integer.parseInt(payload);
+
+        logger.info("Recibiendo mensaje caudal de: " + msg.getTopic() + " con valor: " + valor);
 
         //Corrección sobre el valor enviado, ya que al enviar se le suma 100
         int caudalRawInt = valor - 100;
+        double caudalLMin = 0.0;
 
-        double caudalLMin = (caudalRawInt / 75.0); //ecuación de conversión
+        if (caudalRawInt <= 0) {
+            caudalLMin = 0;
+        } else {
+            caudalLMin = (caudalRawInt / 75.0); //ecuación de conversión
+        }
 
         if ((caudalLMin > 10) || (caudalLMin < 0)) {
             logger.info("No se guarda el valor de caudal -> fuera de rango: " + caudalLMin);
@@ -167,9 +173,11 @@ public class MqttPublisher {
      * @param sensorId
      */
     private void procesarNivel(Mqtt3Publish msg, long sensorId) {
-        logger.info("Recibiendo mensaje nivel de: " + msg.getTopic());
-        String payload = new String(msg.getPayloadAsBytes(), StandardCharsets.UTF_8).trim();
-        double valor = Double.parseDouble(payload);
+        String payload = new String(msg.getPayloadAsBytes()).trim();
+
+        logger.info("Recibiendo mensaje nivel de: " + msg.getTopic() + " con valor: " + payload);
+
+        var valor = Double.parseDouble(payload);
 
         var areaDm2 = 1.45 * 1.45; //(el área de la balsa)
         var capacidadLitros = 8.0;
@@ -192,12 +200,13 @@ public class MqttPublisher {
      * @param sensorId
      */
     private void procesarPresion(Mqtt3Publish msg, long sensorId) {
-        logger.info("Recibiendo mensaje presion de: " + msg.getTopic());
-        String payload = new String(msg.getPayloadAsBytes(), StandardCharsets.UTF_8).trim();
+        String payload = new String(msg.getPayloadAsBytes()).trim();
+
+        logger.info("Recibiendo mensaje presion de: " + msg.getTopic() + " con valor: " + payload);
 
         double valorRaw = Double.parseDouble(payload) - 450;
 
-        if (valorRaw < 0.0)
+        if (valorRaw <= 0.0)
             valorRaw = 0.0;
 
         double convCadMv = 1;       //de cad a mV
@@ -218,8 +227,10 @@ public class MqttPublisher {
      * @param sensorId
      */
     private void procesarHumedad(Mqtt3Publish msg, long sensorId) {
-        logger.info("Recibiendo mensaje humedad de: " + msg.getTopic());
-        String payload = new String(msg.getPayloadAsBytes(), StandardCharsets.UTF_8).trim();
+        String payload = new String(msg.getPayloadAsBytes()).trim();
+
+        logger.info("Recibiendo mensaje humedad de: " + msg.getTopic() + " con valor: " + payload);
+
         var valor = Integer.parseInt(payload);
 
         var cadMin = 330;   //valor en seco
@@ -236,8 +247,10 @@ public class MqttPublisher {
     }
 
     private void procesarActuador(Mqtt3Publish msg, long sensorId) {
-        logger.info("Recibiendo mensaje actuador de: " + msg.getTopic());
         String payload = new String(msg.getPayloadAsBytes(), StandardCharsets.UTF_8).trim();
+
+        logger.info("Recibiendo mensaje actuador de: " + msg.getTopic() + " con valor: " + payload);
+
         String normalizado = payload.toLowerCase();
 
         double valor = switch (normalizado) {
