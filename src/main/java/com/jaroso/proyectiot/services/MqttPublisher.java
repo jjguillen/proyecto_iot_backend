@@ -17,6 +17,7 @@ import tools.jackson.databind.ObjectMapper;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
+import java.util.OptionalDouble;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -145,7 +146,14 @@ public class MqttPublisher {
      */
     private void procesarCaudal(Mqtt3Publish msg, long sensorId) {
         String payload = new String(msg.getPayloadAsBytes()).trim();
-        int valor = Integer.parseInt(payload);
+
+        int valor=0;
+        try {
+            valor = Integer.parseInt(payload);
+        } catch (Exception ex) {
+            logger.warning("Error en lectura caudal " + payload);
+            return;
+        }
 
         logger.info("Recibiendo mensaje caudal de: " + msg.getTopic() + " con valor: " + valor);
 
@@ -177,21 +185,49 @@ public class MqttPublisher {
 
         logger.info("Recibiendo mensaje nivel de: " + msg.getTopic() + " con valor: " + payload);
 
-        var valor = Double.parseDouble(payload);
+        var valor=0;
+        try {
+            valor = Integer.parseInt(payload) - 100;
+        } catch (Exception ex) {
+            logger.warning("Error en lectura nivel " + payload);
+            return;
+        }
 
         var areaDm2 = 1.45 * 1.45; //(el área de la balsa)
         var capacidadLitros = 8.0;
-        var volumenL = areaDm2 * (valor / 10);
+        var volumenL = areaDm2 * (valor / 10.0);
 
         var litros = capacidadLitros - volumenL; //lo que mide es la parte vacía, por lo que hay que restar al máximo (8dm) el volumen convertido a dm
         double porcentaje = (litros / capacidadLitros) * 100.0;
         porcentaje = Math.clamp(porcentaje, 0.0, 100.0);
 
+        logger.info("Nivel valor: " + valor + " con litros: " + litros +
+                " con porcentaje " + porcentaje);
+
+        //Descartar valores fuera de 0 - 8 en litros
+        if (litros < 0 || litros > 8)
+            return;
+        else {
+            //Obtener la media de los últimos 10 registros de nivel
+            OptionalDouble avg = lecturaRepository.findTop10BySensorIdOrderByFechaHoraDesc(sensorId).stream()
+                    .mapToDouble(Lectura::getValor)
+                    .average();
+
+            if (avg.isPresent()) {
+                double media = avg.getAsDouble();
+                //Compararlo con el de porcentaje actual y si se desvía menos del 20%
+                //grabamos la lectura
+                if (Math.abs(media - porcentaje) / media < 0.2) {
+                    saveLectura(porcentaje, sensorId);
+                    //automaticTankLevelService.evaluateLevel(sensorId, porcentaje);
+                } else {
+                    logger.info("Desviación del porcentaje de nivel respecto a la media de las últimas 10 lecturas es mayor al 10%, no se guarda la lectura. Porcentaje actual: " + porcentaje + ", media: " + media);
+                }
+            }
+        }
+
         //MÁS FÁCIL SI SABEMOS ALTURA DE LA BALSA, LO QUE GUARDAMOS ES UN PORCENTAJE
         //porcentaje = ((alturaTotalCm - alturaVaciaCmSensor) / alturaTotalCm) * 100
-
-        saveLectura(porcentaje, sensorId);
-        automaticTankLevelService.evaluateLevel(sensorId, porcentaje);
     }
 
     /**
@@ -204,7 +240,13 @@ public class MqttPublisher {
 
         logger.info("Recibiendo mensaje presion de: " + msg.getTopic() + " con valor: " + payload);
 
-        double valorRaw = Double.parseDouble(payload) - 450;
+        double valorRaw;
+        try {
+            valorRaw = Double.parseDouble(payload) - 450;
+        } catch (Exception ex) {
+            logger.warning("Error en lectura presión " + payload);
+            return;
+        }
 
         if (valorRaw <= 0.0)
             valorRaw = 0.0;
@@ -231,7 +273,13 @@ public class MqttPublisher {
 
         logger.info("Recibiendo mensaje humedad de: " + msg.getTopic() + " con valor: " + payload);
 
-        var valor = Integer.parseInt(payload);
+        var valor=0;
+        try {
+            valor = Integer.parseInt(payload);
+        } catch (Exception ex) {
+            logger.warning("Error en lectura humedad " + payload);
+            return;
+        }
 
         var cadMin = 330;   //valor en seco
         var cadMax = 715;   //valor totalmente húmedo
@@ -246,17 +294,28 @@ public class MqttPublisher {
         }
     }
 
+    /**
+     * Procesado de actuador
+     * @param msg
+     * @param sensorId
+     */
     private void procesarActuador(Mqtt3Publish msg, long sensorId) {
         String payload = new String(msg.getPayloadAsBytes(), StandardCharsets.UTF_8).trim();
 
-        logger.info("Recibiendo mensaje actuador de: " + msg.getTopic() + " con valor: " + payload);
+        String normalizado = "";
+        try {
+            normalizado = String.valueOf(payload.toLowerCase().charAt(0));
+        } catch (Exception ex) {
+            logger.warning("Error en lectura actuador " + payload);
+            return;
+        }
 
-        String normalizado = payload.toLowerCase();
+        logger.info("Recibiendo mensaje actuador de: " + msg.getTopic() + " con valor: " + normalizado);
 
         double valor = switch (normalizado) {
             case "on", "true", "1" -> 1.0;
             case "off", "false", "0" -> 0.0;
-            default -> throw new IllegalArgumentException("Payload de actuador no soportado: " + payload);
+            default -> throw new IllegalArgumentException("Payload de actuador no soportado: " + normalizado);
         };
 
         //Guardar la lectura en BBDD

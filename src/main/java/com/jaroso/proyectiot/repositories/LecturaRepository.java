@@ -14,10 +14,11 @@ public interface LecturaRepository extends JpaRepository<Lectura, Long> {
     List<Lectura> findAllBySensorIdAndFechaHoraBetween(Long sensorId,
                          LocalDateTime fechaHoraAfter, LocalDateTime fechaHoraBefore);
 
-    // Método para obtener la última lectura de un sensor (ordenada por fechaHora descendente)
+    //Obtener la última lectura de un sensor (ordenada por fechaHora descendente)
     Optional<Lectura> findTopBySensorIdOrderByFechaHoraDesc(Long sensorId);
 
-
+    //Obtener las 10 últimas lecturas de un sensor (ordenadas por fechaHora descendente)
+    List<Lectura> findTop10BySensorIdOrderByFechaHoraDesc(Long sensorId);
 
 
 }

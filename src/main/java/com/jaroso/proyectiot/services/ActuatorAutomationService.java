@@ -193,7 +193,7 @@ public class ActuatorAutomationService {
     }
 
     private String toActuatorCommand(EstadoSensor state) {
-        return state == EstadoSensor.ARRANCADO ? "ON" : "OFF";
+        return state == EstadoSensor.ARRANCADO ? "0" : "1";
     }
 
     private AutomationDecisionResponseDto denied(String reason) {

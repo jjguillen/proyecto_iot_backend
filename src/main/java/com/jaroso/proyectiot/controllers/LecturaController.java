@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.DoubleSummaryStatistics;
 import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
@@ -66,6 +67,24 @@ public class LecturaController {
         } else {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    /**
+     * Devuelve la media de las últimas 10 lecturas de un sensor
+     * @param idSensor id del sensor del que se quiere calcular la media
+     */
+    @GetMapping("/lecturas/{idSensor}/media-ultimas-10")
+    public ResponseEntity<Double> getMediaUltimas10Lecturas(@PathVariable Long idSensor) {
+        List<Lectura> ultimasLecturas = lecturaRepository.findTop10BySensorIdOrderByFechaHoraDesc(idSensor);
+        if (ultimasLecturas.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        DoubleSummaryStatistics stats = ultimasLecturas.stream()
+                .mapToDouble(Lectura::getValor)
+                .summaryStatistics();
+
+        return ResponseEntity.ok(stats.getAverage());
     }
 
     /**
