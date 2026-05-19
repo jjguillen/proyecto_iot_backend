@@ -208,7 +208,11 @@ public class MqttPublisher {
         if (litros < 0 || litros > 8)
             return;
         else {
-            //Obtener la media de los últimos 10 registros de nivel
+            saveLectura(porcentaje, sensorId);
+            //automaticTankLevelService.evaluateLevel(sensorId, porcentaje);
+
+            /*
+            //Obtener la media de los últimos 10 registros de nivel para no guardar los valores fuera de rango
             OptionalDouble avg = lecturaRepository.findTop10BySensorIdOrderByFechaHoraDesc(sensorId).stream()
                     .mapToDouble(Lectura::getValor)
                     .average();
@@ -223,7 +227,11 @@ public class MqttPublisher {
                 } else {
                     logger.info("Desviación del porcentaje de nivel respecto a la media de las últimas 10 lecturas es mayor al 10%, no se guarda la lectura. Porcentaje actual: " + porcentaje + ", media: " + media);
                 }
-            }
+            } else {
+                //Si no hay media, guardamos la lectura
+                saveLectura(porcentaje, sensorId);
+                //automaticTankLevelService.evaluateLevel(sensorId, porcentaje);
+             */
         }
 
         //MÁS FÁCIL SI SABEMOS ALTURA DE LA BALSA, LO QUE GUARDAMOS ES UN PORCENTAJE
