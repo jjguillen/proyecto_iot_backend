@@ -34,6 +34,9 @@ public class MqttPublisher {
     private AutomaticTankLevelService automaticTankLevelService;
 
     @Autowired
+    private AutomaticHumiditySectorService automaticHumiditySectorService;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
     private final Mqtt3AsyncClient client;
@@ -299,6 +302,7 @@ public class MqttPublisher {
             logger.info("No se guarda el valor de humedad -> fuera de rango: " + humedadRH);
         } else {
             saveLectura(humedadRH, sensorId);
+            automaticHumiditySectorService.evaluateHumidity(sensorId, humedadRH);
         }
     }
 
