@@ -20,10 +20,15 @@ public class AutomaticTankLevelService {
     @Lazy
     private ActuatorAutomationService actuatorAutomationService;
 
-    Logger logger = Logger.getLogger(ActuatorAutomationService.class.getName());
+    @Autowired
+    private ConfiguracionService configuracionService;
+
+    Logger logger = Logger.getLogger(AutomaticTankLevelService.class.getName());
 
     public void evaluateLevel(Long levelSensorId, Double currentValue) {
-        //logger.info("Evaluando nivel para sensor " + levelSensorId + " con valor actual: " + currentValue);
+        if (!configuracionService.isNivelEnabled()) {
+            return;
+        }
 
         Sensor sensorNivel = sensorRepository.findById(levelSensorId).orElse(null);
         if (sensorNivel == null) return;

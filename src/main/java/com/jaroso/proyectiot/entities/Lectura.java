@@ -30,6 +30,10 @@ public class Lectura {
     @Column(nullable = false, name = "fecha_hora", updatable = false)
     private LocalDateTime fechaHora;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private OrigenLectura origen = OrigenLectura.MQTT;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sensor_id", nullable = false)
     private Sensor sensor;

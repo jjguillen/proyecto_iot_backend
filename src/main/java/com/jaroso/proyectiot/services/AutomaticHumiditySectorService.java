@@ -44,6 +44,9 @@ public class AutomaticHumiditySectorService {
     @Lazy
     private ActuatorAutomationService actuatorAutomationService;
 
+    @Autowired
+    private ConfiguracionService configuracionService;
+
     private final Logger logger = Logger.getLogger(AutomaticHumiditySectorService.class.getName());
 
     /**
@@ -53,6 +56,9 @@ public class AutomaticHumiditySectorService {
      * @param currentValue     valor de humedad en % (0-100)
      */
     public void evaluateHumidity(Long humiditySensorId, Double currentValue) {
+        if (!configuracionService.isHumedadEnabled()) {
+            return;
+        }
         Sensor sensorHumedad = sensorRepository.findById(humiditySensorId).orElse(null);
         if (sensorHumedad == null) return;
         if (sensorHumedad.getTipo() != TipoSensor.HUMEDAD) return;
